@@ -1,0 +1,730 @@
+import * as chai from 'chai'
+import chaiAsPromised from 'chai-as-promised'
+import Cursor from 'pg-cursor'
+import { Client, Pool, type PoolConfig } from 'pg'
+import { createConnection, createPool } from 'mysql2'
+import Database from 'better-sqlite3'
+import * as Tarn from 'tarn'
+import * as Tedious from 'tedious'
+import type { PoolOptions } from 'mysql2'
+import { PGlite } from '@electric-sql/pglite'
+
+chai.use(chaiAsPromised)
+
+import {
+  Kysely,
+  type KyselyConfig,
+  type KyselyPlugin,
+  type Compilable,
+  type RootOperationNode,
+  type PluginTransformQueryArgs,
+  type PluginTransformResultArgs,
+  type QueryResult,
+  type UnknownRow,
+  OperationNodeTransformer,
+  PostgresDialect,
+  MysqlDialect,
+  type SchemaModule,
+  type InsertResult,
+  SqliteDialect,
+  type InsertQueryBuilder,
+  type Generated,
+  sql,
+  type ColumnType,
+  type InsertObject,
+  MssqlDialect,
+  type SelectQueryBuilder,
+  type OrderByDirection,
+  type OrderByExpression,
+  type ColumnDefinitionBuilder,
+  ParseJSONResultsPlugin,
+  type JSONColumnType,
+  type SqlBool,
+  PGliteDialect,
+} from '../../../dist/index.js'
+import type { ConnectionConfiguration } from 'tedious'
+import type { DataTypeExpression } from '../../../dist/parser/data-type-parser.js'
+
+export type Gender = 'male' | 'female' | 'other'
+export type MaritalStatus = 'single' | 'married' | 'divorced' | 'widowed'
+export type Species = 'dog' | 'cat' | 'hamster'
+
+export interface Person {
+  id: Generated<number>
+  first_name: string | null
+  middle_name: ColumnType<string | null, string | undefined, string | undefined>
+  last_name: string | null
+  gender: Gender
+  marital_status: MaritalStatus | null
+  children: Generated<number>
+}
+
+export interface Pet {
+  id: Generated<number>
+  name: string
+  owner_id: number
+  species: Species
+}
+
+export interface Toy {
+  id: Generated<number>
+  name: string
+  price: number
+  pet_id: number
+}
+
+export interface Database {
+  person: Person
+  pet: Pet
+  toy: Toy
+  'toy_schema.toy': Toy
+}
+
+interface PersonInsertParams extends InsertObject<Database, 'person'> {
+  pets?: PetInsertParams[]
+}
+
+interface PetInsertParams extends Omit<Pet, 'id' | 'owner_id'> {
+  toys?: Omit<Toy, 'id' | 'pet_id'>[]
+}
+
+export interface TestContext {
+  dialect: DialectDescriptor
+  config: KyselyConfig
+  db: Kysely<Database>
+}
+
+export type SQLSpec = 'postgres' | 'mysql' | 'mssql' | 'sqlite'
+
+export type DialectVariant = SQLSpec | 'pglite'
+
+export interface DialectDescriptor {
+  sqlSpec: SQLSpec
+  variant: DialectVariant
+}
+
+export type PerDialectVariant<T> = Record<DialectVariant, T>
+export type PerSQLDialect<T> = Record<SQLSpec, T>
+
+export const DIALECTS = (
+  [
+    { sqlSpec: 'postgres', variant: 'postgres' },
+    { sqlSpec: 'mysql', variant: 'mysql' },
+    { sqlSpec: 'mssql', variant: 'mssql' },
+    { sqlSpec: 'sqlite', variant: 'sqlite' },
+    { sqlSpec: 'postgres', variant: 'pglite' },
+  ] as const satisfies readonly DialectDescriptor[]
+).filter(
+  ({ variant }) =>
+    process.env.DIALECTS?.split(',')
+      .map((it) => it.trim())
+      .includes(variant) ?? true,
+)
+
+const TEST_INIT_TIMEOUT = 5 * 60 * 1000
+// This can be used as a placeholder for testSql when a query is not
+// supported on some dialect.
+export const NOT_SUPPORTED = { sql: '', parameters: [] }
+
+export const PLUGINS: KyselyPlugin[] = []
+
+if (process.env.TEST_TRANSFORMER) {
+  console.log('running tests with a transformer')
+  // Add a noop transformer using a plugin to make sure that the
+  // OperationNodeTransformer base class is implemented correctly
+  // and all nodes and properties get cloned by default.
+  PLUGINS.push(createNoopTransformerPlugin())
+}
+
+export const POOL_SIZE = 20
+
+const POSTGRES_CONFIG: PoolConfig = {
+  database: 'kysely_test',
+  host: 'localhost',
+  user: 'kysely',
+  password: 'kysely',
+  port: 5434,
+  max: POOL_SIZE,
+}
+
+const MYSQL_CONFIG: PoolOptions = {
+  database: 'kysely_test',
+  host: 'localhost',
+  user: 'kysely',
+  password: 'kysely',
+  port: 3308,
+  // Return big numbers as strings just like pg does.
+  supportBigNumbers: true,
+  bigNumberStrings: true,
+
+  connectionLimit: POOL_SIZE,
+  multipleStatements: true,
+}
+
+const MSSQL_CONFIG: ConnectionConfiguration = {
+  authentication: {
+    options: {
+      password: 'KyselyTest0',
+      userName: 'sa',
+    },
+    type: 'default',
+  },
+  options: {
+    connectTimeout: 3000,
+    database: 'kysely_test',
+    port: 21433,
+    trustServerCertificate: true,
+  },
+  server: 'localhost',
+}
+
+const SQLITE_CONFIG = {
+  databasePath: ':memory:',
+}
+
+const PGLITE_CONFIG = {}
+
+export const DIALECT_CONFIGS = {
+  postgres: POSTGRES_CONFIG,
+  mysql: MYSQL_CONFIG,
+  mssql: MSSQL_CONFIG,
+  sqlite: SQLITE_CONFIG,
+  pglite: PGLITE_CONFIG,
+}
+
+export const PG_ERRORS: Error[] = []
+
+export const DB_CONFIGS: PerDialectVariant<KyselyConfig> = {
+  postgres: {
+    dialect: new PostgresDialect({
+      controlClient: Client,
+      pool: async () =>
+        new Pool(DIALECT_CONFIGS.postgres).on('error', (error) =>
+          PG_ERRORS.push(error),
+        ),
+      cursor: Cursor,
+    }),
+    plugins: PLUGINS,
+  },
+
+  mysql: {
+    dialect: new MysqlDialect({
+      controlConnection: createConnection,
+      pool: async () => createPool(DIALECT_CONFIGS.mysql),
+    }),
+    plugins: PLUGINS,
+  },
+
+  mssql: {
+    dialect: new MssqlDialect({
+      resetConnectionsOnRelease: false,
+      tarn: {
+        options: {
+          max: POOL_SIZE,
+          min: 0,
+        },
+        ...Tarn,
+      },
+      tedious: {
+        ...Tedious,
+        connectionFactory: () => new Tedious.Connection(DIALECT_CONFIGS.mssql),
+      },
+      validateConnections: false,
+    }),
+    plugins: PLUGINS,
+  },
+
+  sqlite: {
+    dialect: new SqliteDialect({
+      database: async () => new Database(DIALECT_CONFIGS.sqlite.databasePath),
+    }),
+    plugins: PLUGINS,
+  },
+
+  pglite: {
+    dialect: new PGliteDialect({
+      pglite: async () => new PGlite(DIALECT_CONFIGS.pglite),
+    }),
+    plugins: PLUGINS,
+  },
+}
+
+export async function initTest(
+  ctx: Mocha.Context,
+  dialect: DialectDescriptor,
+  overrides?: Omit<KyselyConfig, 'dialect'>,
+): Promise<TestContext> {
+  const config = DB_CONFIGS[dialect.variant]
+
+  ctx.timeout(TEST_INIT_TIMEOUT)
+  const db = await connect(dialect, { ...config, ...overrides })
+
+  await createDatabase(db, dialect)
+  return { config, db, dialect }
+}
+
+export async function destroyTest(ctx: TestContext): Promise<void> {
+  if (ctx.dialect.variant !== 'pglite' && ctx.dialect.variant !== 'sqlite') {
+    await dropDatabase(ctx.db)
+  }
+
+  await ctx.db.destroy()
+}
+
+export async function insertPersons(
+  ctx: TestContext,
+  insertPersons: PersonInsertParams[],
+): Promise<void> {
+  for (const insertPerson of insertPersons) {
+    const { pets, ...person } = insertPerson
+
+    const personId = await insert(
+      ctx,
+      ctx.db.insertInto('person').values({ ...person }),
+    )
+
+    for (const insertPet of pets ?? []) {
+      await insertPetForPerson(ctx, personId, insertPet)
+    }
+  }
+}
+
+export const DEFAULT_DATA_SET: PersonInsertParams[] = [
+  {
+    first_name: 'Jennifer',
+    last_name: 'Aniston',
+    gender: 'female',
+    pets: [{ name: 'Catto', species: 'cat' }],
+    marital_status: 'divorced',
+  },
+  {
+    first_name: 'Arnold',
+    last_name: 'Schwarzenegger',
+    gender: 'male',
+    pets: [{ name: 'Doggo', species: 'dog' }],
+    marital_status: 'divorced',
+  },
+  {
+    first_name: 'Sylvester',
+    last_name: 'Stallone',
+    gender: 'male',
+    pets: [{ name: 'Hammo', species: 'hamster' }],
+    marital_status: 'married',
+  },
+]
+
+export async function insertDefaultDataSet(ctx: TestContext): Promise<void> {
+  await insertPersons(ctx, DEFAULT_DATA_SET)
+}
+
+export async function clearDatabase(ctx: TestContext): Promise<void> {
+  await ctx.db.deleteFrom('toy').execute()
+  await ctx.db.deleteFrom('pet').execute()
+  await ctx.db.deleteFrom('person').execute()
+}
+
+export function testSql(
+  query: Compilable,
+  dialect: DialectDescriptor,
+  expectedPerDialect: PerSQLDialect<{
+    sql: string | string[]
+    parameters: any[]
+  }> &
+    Partial<
+      Omit<
+        PerDialectVariant<{ sql: string | string[]; parameters: any[] }>,
+        keyof PerSQLDialect<any>
+      >
+    >,
+): void {
+  const expected =
+    expectedPerDialect[dialect.variant] || expectedPerDialect[dialect.sqlSpec]
+  const expectedSql = Array.isArray(expected.sql)
+    ? expected.sql.map((it) => it.trim()).join(' ')
+    : expected.sql
+  const sql = query.compile()
+
+  chai.expect(expectedSql).to.equal(sql.sql)
+  chai.expect(expected.parameters).to.eql(sql.parameters)
+}
+
+testSql.skip = function (
+  _query: Compilable,
+  _dialect: DialectDescriptor,
+  _expectedPerDialect: PerSQLDialect<{
+    sql: string | string[]
+    parameters: any[]
+  }> &
+    Partial<
+      Omit<
+        PerDialectVariant<{ sql: string | string[]; parameters: any[] }>,
+        keyof PerSQLDialect<any>
+      >
+    >,
+) {
+  // noop
+}
+
+async function createDatabase(
+  db: Kysely<Database>,
+  dialect: DialectDescriptor,
+): Promise<void> {
+  const { sqlSpec, variant } = dialect
+
+  if (variant !== 'pglite' && variant !== 'sqlite') {
+    await dropDatabase(db)
+  }
+
+  await createTableWithId(db.schema, dialect, 'person')
+    .addColumn('first_name', 'varchar(255)')
+    .addColumn('middle_name', 'varchar(255)')
+    .addColumn('last_name', 'varchar(255)')
+    .addColumn('gender', 'varchar(50)', (col) => col.notNull())
+    .addColumn('marital_status', 'varchar(50)')
+    .addColumn('children', 'integer', (col) => col.notNull().defaultTo(0))
+    .execute()
+
+  await createTableWithId(db.schema, dialect, 'pet', true)
+    .addColumn('name', 'varchar(255)', (col) => col.unique().notNull())
+    .addColumn('owner_id', 'integer', (col) =>
+      col.references('person.id').onDelete('cascade').notNull(),
+    )
+    .addColumn('species', 'varchar(50)', (col) => col.notNull())
+    .execute()
+
+  const createToyTableBase = createTableWithId(db.schema, dialect, 'toy')
+    .addColumn('name', 'varchar(255)', (col) => col.notNull())
+    .addColumn('pet_id', 'integer', (col) => col.references('pet.id').notNull())
+
+  if (sqlSpec === 'postgres') {
+    await createToyTableBase
+      .addColumn('price', 'double precision', (col) => col.notNull())
+      .execute()
+    await sql`COMMENT ON COLUMN toy.price IS 'Price in USD';`.execute(db)
+  }
+
+  if (sqlSpec === 'mssql') {
+    await createToyTableBase
+      .addColumn('price', 'double precision', (col) => col.notNull())
+      .execute()
+    await sql`EXECUTE sp_addextendedproperty N'MS_Description', N'Price in USD', N'SCHEMA', N'dbo', N'TABLE', 'toy', N'COLUMN', N'price'`.execute(
+      db,
+    )
+  }
+
+  if (sqlSpec === 'mysql') {
+    await createToyTableBase
+      .addColumn('price', 'double precision', (col) =>
+        col.notNull().modifyEnd(sql`comment ${sql.lit('Price in USD')}`),
+      )
+      .execute()
+  }
+
+  if (sqlSpec === 'sqlite') {
+    // there is no way to add a comment
+    await createToyTableBase
+      .addColumn('price', 'double precision', (col) => col.notNull())
+      .execute()
+  }
+
+  await db.schema
+    .createIndex('pet_owner_id_index')
+    .on('pet')
+    .column('owner_id')
+    .execute()
+}
+
+export function createTableWithId(
+  schema: SchemaModule,
+  dialect: DialectDescriptor,
+  tableName: string,
+  implicitIncrement: boolean = false,
+) {
+  const builder = schema.createTable(tableName)
+
+  if (dialect.sqlSpec === 'postgres') {
+    return builder.addColumn('id', 'serial', (col) => col.primaryKey())
+  }
+
+  if (dialect.sqlSpec === 'mssql') {
+    return builder.addColumn('id', 'integer', (col) =>
+      col.identity().notNull().primaryKey(),
+    )
+  }
+
+  return builder.addColumn('id', 'integer', (col) => {
+    if (implicitIncrement && dialect.sqlSpec === 'sqlite') {
+      return col.primaryKey()
+    }
+    return col.autoIncrement().primaryKey()
+  })
+}
+
+async function connect(
+  dialect: DialectDescriptor,
+  config: KyselyConfig,
+): Promise<Kysely<Database>> {
+  for (let i = 0; i < TEST_INIT_TIMEOUT; i += 1000) {
+    let db: Kysely<Database> | undefined
+
+    try {
+      db = new Kysely<Database>(config)
+      await sql`select 1`.execute(db)
+      return db
+    } catch (error) {
+      console.error(error)
+
+      if (db) {
+        await db.destroy().catch((error) => error)
+      }
+
+      // these either succeed first try or will forever fail and keep the process running forever.
+      if (dialect.variant === 'sqlite' || dialect.variant === 'pglite') {
+        throw error
+      }
+
+      console.log(
+        'Waiting for the database to become available. Did you remember to run `docker compose up`?',
+      )
+
+      await sleep(1000)
+    }
+  }
+
+  throw new Error('could not connect to database')
+}
+
+async function dropDatabase(db: Kysely<Database>): Promise<void> {
+  await db.schema.dropTable('toy').ifExists().execute()
+  await db.schema.dropTable('pet').ifExists().execute()
+  await db.schema.dropTable('person').ifExists().execute()
+}
+
+export const expect = chai.expect
+
+async function insertPetForPerson(
+  ctx: TestContext,
+  personId: number,
+  insertPet: PetInsertParams,
+): Promise<void> {
+  const { toys, ...pet } = insertPet
+
+  const petId = await insert(
+    ctx,
+    ctx.db.insertInto('pet').values({ ...pet, owner_id: personId }),
+  )
+
+  for (const toy of toys ?? []) {
+    await insertToysForPet(ctx, petId, toy)
+  }
+}
+
+async function insertToysForPet(
+  ctx: TestContext,
+  petId: number,
+  toy: Omit<Toy, 'id' | 'pet_id'>,
+): Promise<void> {
+  await ctx.db
+    .insertInto('toy')
+    .values({ ...toy, pet_id: petId })
+    .executeTakeFirst()
+}
+
+export async function insert<TB extends keyof Database>(
+  ctx: TestContext,
+  qb: InsertQueryBuilder<Database, TB, InsertResult>,
+): Promise<number> {
+  const { dialect } = ctx
+
+  if (dialect.sqlSpec === 'postgres' || dialect.sqlSpec === 'sqlite') {
+    const { id } = await qb.returning('id').executeTakeFirstOrThrow()
+
+    return id
+  }
+
+  if (dialect.sqlSpec === 'mssql') {
+    const { id } = await qb
+      .output('inserted.id' as any)
+      .$castTo<{ id: number }>()
+      .executeTakeFirstOrThrow()
+
+    return id
+  }
+
+  const { insertId } = await qb.executeTakeFirstOrThrow()
+
+  return Number(insertId)
+}
+
+function createNoopTransformerPlugin(): KyselyPlugin {
+  const transformer = new OperationNodeTransformer()
+
+  return {
+    transformQuery(args: PluginTransformQueryArgs): RootOperationNode {
+      return transformer.transformNode(args.node, args.queryId)
+    },
+
+    async transformResult(
+      args: PluginTransformResultArgs,
+    ): Promise<QueryResult<UnknownRow>> {
+      return args.result
+    },
+  }
+}
+
+function sleep(millis: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, millis))
+}
+
+export function limit<QB extends SelectQueryBuilder<any, any, any>>(
+  limit: number,
+  dialect: DialectDescriptor,
+): (qb: QB) => QB {
+  return (qb) => {
+    if (dialect.sqlSpec === 'mssql') {
+      return qb.top(limit) as QB
+    }
+
+    return qb.limit(limit) as QB
+  }
+}
+
+export function orderBy<QB extends SelectQueryBuilder<any, any, any>>(
+  orderBy: QB extends SelectQueryBuilder<infer DB, infer TB, infer O>
+    ? OrderByExpression<DB, TB, O>
+    : never,
+  direction: OrderByDirection | undefined,
+  dialect: DialectDescriptor,
+): (qb: QB) => QB {
+  return (qb) =>
+    qb
+      .orderBy(orderBy, direction)
+      .$if(dialect.sqlSpec === 'mssql', (qb) => qb.offset(0)) as QB
+}
+
+export type JSONTestContext = Awaited<ReturnType<typeof initJSONTest>>
+
+export async function initJSONTest<D extends DialectDescriptor>(
+  ctx: Mocha.Context,
+  dialect: D,
+) {
+  const testContext = await initTest(ctx, dialect)
+
+  let db = testContext.db.withTables<{
+    person_metadata: {
+      person_id: number
+      website: JSONColumnType<{ url: string }>
+      nicknames: JSONColumnType<string[]>
+      profile: JSONColumnType<{
+        auth: {
+          roles: string[]
+          last_login?: { device: string }
+          is_verified: SqlBool
+          login_count: number
+        }
+        avatar: string | null
+        tags: string[]
+      }>
+      experience: JSONColumnType<
+        {
+          establishment: string
+        }[]
+      >
+      schedule: JSONColumnType<{ name: string; time: string }[][][]>
+    }
+  }>()
+
+  if (dialect.sqlSpec === 'sqlite') {
+    db = db.withPlugin(new ParseJSONResultsPlugin())
+  }
+
+  const jsonColumnDataType = resolveJSONColumnDataType(dialect)
+  const notNull = (cb: ColumnDefinitionBuilder) => cb.notNull()
+
+  await db.schema
+    .createTable('person_metadata')
+    .addColumn('person_id', 'integer', (cb) =>
+      cb.primaryKey().references('person.id'),
+    )
+    .addColumn('website', jsonColumnDataType, notNull)
+    .addColumn('nicknames', jsonColumnDataType, notNull)
+    .addColumn('profile', jsonColumnDataType, notNull)
+    .addColumn('experience', jsonColumnDataType, notNull)
+    .addColumn('schedule', jsonColumnDataType, notNull)
+    .execute()
+
+  return { ...testContext, db }
+}
+
+export function resolveJSONColumnDataType(
+  dialect: DialectDescriptor,
+): DataTypeExpression {
+  switch (dialect.sqlSpec) {
+    case 'postgres':
+      return 'jsonb'
+    case 'mysql':
+      return 'json'
+    case 'mssql':
+      return sql`nvarchar(max)`
+    case 'sqlite':
+      return 'text'
+  }
+}
+
+export async function insertDefaultJSONDataSet(
+  ctx: JSONTestContext,
+): Promise<void> {
+  await insertDefaultDataSet(ctx as any)
+
+  const people = await ctx.db
+    .selectFrom('person')
+    .select(['id', 'first_name', 'last_name'])
+    .execute()
+
+  await ctx.db
+    .insertInto('person_metadata')
+    .values(
+      people
+        .filter((person) => person.first_name && person.last_name)
+        .map((person, index) => ({
+          person_id: person.id,
+          website: JSON.stringify({
+            url: `https://www.${person.first_name!.toLowerCase()}${person.last_name!.toLowerCase()}.com`,
+          }),
+          nicknames: JSON.stringify([
+            `${person.first_name![0]}.${person.last_name![0]}.`,
+            `${person.first_name} the Great`,
+            `${person.last_name} the Magnificent`,
+          ]),
+          profile: JSON.stringify({
+            tags: ['awesome'],
+            auth: {
+              roles: ['contributor', 'moderator'],
+              last_login: {
+                device: 'android',
+              },
+              login_count: 12 + index,
+              is_verified: true,
+            },
+            avatar: null,
+          }),
+          experience: JSON.stringify([
+            {
+              establishment: 'The University of Life',
+            },
+          ]),
+          schedule: JSON.stringify([[[{ name: 'Gym', time: '12:15' }]]]),
+        })),
+    )
+    .execute()
+}
+
+export async function clearJSONDatabase(ctx: JSONTestContext): Promise<void> {
+  await ctx.db.deleteFrom('person_metadata').execute()
+  await clearDatabase(ctx as any)
+}
+
+export async function destroyJSONTest(ctx: JSONTestContext): Promise<void> {
+  await ctx.db.schema.dropTable('person_metadata').execute()
+  await destroyTest(ctx as any)
+}

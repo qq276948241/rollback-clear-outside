@@ -1,0 +1,147 @@
+.quotesSection {
+  border-top: 1px solid var(--kl-line);
+}
+
+.quotesContainer {
+  padding-bottom: 84px;
+  padding-top: 72px;
+}
+
+.sectionHeading {
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+}
+
+.sectionSub {
+  color: var(--kl-mut);
+  font-size: 14.5px;
+  margin: 0 0 34px;
+}
+
+.featured {
+  margin-bottom: 16px;
+}
+
+.featured .quoteContainer {
+  padding: 26px 28px;
+}
+
+.featured .quoteText {
+  font-size: 17.5px;
+  line-height: 1.6;
+}
+
+.masonry {
+  display: none;
+  gap: 16px;
+}
+
+.masonryColumn {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+@media (min-width: 997px) {
+  .masonry3 {
+    display: flex;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 996px) {
+  .masonry2 {
+    display: flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .masonry1 {
+    display: flex;
+  }
+}
+
+/* Light gets tonal lift too: VitePress-style grey cards on the white
+   ground, matching the figures' panel grey. */
+:global(html[data-theme='light']) .quoteContainer {
+  background-color: var(--kl-panel);
+}
+
+.quoteContainer {
+  align-items: flex-start;
+  background-color: var(--kl-surface);
+  border: 1px solid var(--kl-line);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px 22px;
+  position: relative;
+  text-decoration: none;
+  transition: border-color 0.15s ease;
+}
+
+/* Every card links to the source; the corner arrow is the standing cue,
+   faint until intent (same convention as the proof wall). */
+.quoteContainer::after {
+  color: var(--kl-faint);
+  content: '↗';
+  font-size: 11px;
+  position: absolute;
+  right: 6px;
+  top: 4px;
+  transition: color 0.15s ease;
+}
+
+.quoteContainer:hover {
+  border-color: var(--kl-dash);
+  text-decoration: none;
+}
+
+.quoteContainer:hover::after {
+  color: var(--kl-acc);
+}
+
+.quoteInnerContainer {
+  display: flex;
+  gap: 10px;
+}
+
+.quoteHeader {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+}
+
+.quoteTitle {
+  color: var(--kl-ink);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.quoteSubtitle {
+  color: var(--kl-mut);
+  font-size: 12px;
+}
+
+.quoteText {
+  color: var(--kl-text2);
+  font-size: 13.5px;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.icon {
+  bottom: 18px;
+  height: 16px;
+  position: absolute;
+  right: 18px;
+  width: 16px;
+}
+
+.darkIcon {
+  fill: var(--kl-ink);
+}
+

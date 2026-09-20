@@ -1,0 +1,24 @@
+{
+  "$schema": "https://deno.land/x/deno/cli/schemas/config-file.v1.json",
+  "compilerOptions": {
+    "types": ["./deno.check.d.ts"]
+  },
+  "imports": {
+    "@electric-sql/pglite": "npm:@electric-sql/pglite",
+    "better-sqlite3": "npm:better-sqlite3",
+    "kysely": "./dist",
+    "kysely/helpers/mssql": "./dist/helpers/mssql.js",
+    "kysely/helpers/mysql": "./dist/helpers/mysql.js",
+    "kysely/helpers/postgres": "./dist/helpers/postgres.js",
+    "kysely/helpers/sqlite": "./dist/helpers/sqlite.js",
+    "kysely/migration": "./dist/migration",
+    "kysely/readonly": "./dist/readonly",
+    "lodash/snakeCase": "npm:lodash/snakeCase",
+    "mysql2": "npm:mysql2",
+    "pg": "npm:pg",
+    "pg-cursor": "npm:pg-cursor",
+    "tarn": "npm:tarn",
+    "tedious": "npm:tedious",
+    "type-editor": "./deno.check.d.ts"
+  }
+}

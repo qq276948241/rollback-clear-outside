@@ -1,0 +1,696 @@
+.landing {
+  /* Neutrals anchored to VS Code Dark+ (dark) / Light+ (light) so the shiki
+     figures share the page's palette in both themes. Sky is the only hue. */
+  --kl-bg: #131313;
+  --kl-card: #131313;
+  --kl-surface: #1e1e1e;
+  --kl-panel: #1e1e1e;
+  --kl-panel2: #252526;
+  --kl-line: #2e2e2e;
+  --kl-dash: #3c3c3c;
+  --kl-dots: #4a4a4a;
+  --kl-dot-glyph: #3a3a3a;
+  --kl-ink: #e8e8e8;
+  --kl-text2: #cfcfcf;
+  --kl-strong: #c9c9c9;
+  --kl-caption: #b5b5b5;
+  --kl-mut: #9b9b9b;
+  --kl-faint: #6f6f6f;
+  --kl-acc: #38bdf8;
+  --kl-acc-contrast: #06202e;
+  --kl-acc-dots: rgb(56 189 248 / 45%);
+  --kl-err: #f14c4c;
+  --kl-err-text: #f48771;
+  --kl-type: #4ec9b0;
+  --kl-shadow: rgb(0 0 0 / 45%);
+
+  background: var(--kl-bg);
+  color: var(--kl-ink);
+}
+
+:global(html[data-theme='light']) .landing {
+  --kl-bg: #ffffff;
+  --kl-card: #ffffff;
+  --kl-surface: #ffffff;
+  --kl-panel: #f6f8fa;
+  --kl-panel2: #f3f3f3;
+  --kl-line: #e1e4e8;
+  --kl-dash: #c9ced4;
+  --kl-dots: #b6bcc2;
+  --kl-dot-glyph: #d4d4d4;
+  --kl-ink: #1f2328;
+  --kl-text2: #3a4148;
+  --kl-strong: #454c54;
+  --kl-caption: #57606a;
+  --kl-mut: #656d76;
+  --kl-faint: #8b949e;
+  --kl-acc: #0284c7;
+  --kl-acc-contrast: #ffffff;
+  --kl-acc-dots: rgb(2 132 199 / 40%);
+  --kl-err: #e51400;
+  --kl-err-text: #cd3131;
+  --kl-type: #267f99;
+  --kl-shadow: rgb(31 35 40 / 15%);
+}
+
+.landing h1,
+.landing h2,
+.landing h3 {
+  color: var(--kl-ink);
+}
+
+/* One consistent 1140px rail for every section; Infima's container otherwise
+   grows to 1320px on wide screens and misaligns with the hero. */
+.landing :global(.container) {
+  max-width: 1140px;
+}
+
+/* Inline code chips follow the landing palette in both themes. */
+.landing :not(pre) > code {
+  background: var(--kl-panel2);
+  border-color: var(--kl-line);
+  color: var(--kl-ink);
+}
+
+.editorCode :global(pre.shiki) code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+/* ------------------------------ hero ------------------------------ */
+
+.hero {
+  border-bottom: 1px solid var(--kl-line);
+}
+
+.heroInner {
+  align-items: center;
+  display: grid;
+  gap: 56px;
+  grid-template-columns: minmax(0, 10fr) minmax(0, 11fr);
+  padding-bottom: 72px;
+  padding-top: 80px;
+}
+
+.eyebrow {
+  background: var(--kl-panel);
+  border: 1px solid var(--kl-line);
+  border-radius: 999px;
+  color: var(--kl-acc);
+  display: inline-block;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 5px 12px;
+}
+
+.eyebrow a {
+  color: inherit;
+  cursor: pointer;
+  padding-bottom: 4px;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--kl-acc-dots);
+  text-underline-offset: 3px;
+}
+
+.eyebrow a:hover {
+  color: var(--kl-ink);
+  text-decoration-color: var(--kl-acc);
+}
+
+.heroTitle {
+  font-size: clamp(36px, 3.9vw, 50px);
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+  margin: 18px 0 16px;
+}
+
+.heroCategory {
+  color: var(--kl-mut);
+  display: block;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+.heroCategory a {
+  color: inherit;
+  cursor: pointer;
+  padding-bottom: 12px;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--kl-dots);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 8px;
+}
+
+.heroCategory a:hover {
+  color: var(--kl-ink);
+  text-decoration-color: var(--kl-acc);
+}
+
+.heroSubtitle {
+  color: var(--kl-mut);
+  font-size: 16.5px;
+  line-height: 1.65;
+  margin: 0 0 26px;
+}
+
+.heroSubtitle a {
+  color: inherit;
+  cursor: pointer;
+  padding-bottom: 5px;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--kl-dots);
+  text-underline-offset: 3px;
+}
+
+.heroSubtitle a:hover {
+  color: var(--kl-ink);
+  text-decoration-color: var(--kl-acc);
+}
+
+.heroButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Tertiary reassurance link: whispered, not shouted. */
+.heroAudit {
+  color: var(--kl-faint);
+  font-size: 13px;
+  margin: 14px 0 0;
+}
+
+.heroAudit a {
+  color: var(--kl-mut);
+  cursor: pointer;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--kl-dots);
+  text-underline-offset: 3px;
+}
+
+.heroAudit a:hover {
+  color: var(--kl-ink);
+  text-decoration-color: var(--kl-acc);
+}
+
+.btn {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  display: inline-block;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 18px;
+  text-decoration: none;
+}
+
+.btn:hover {
+  text-decoration: none;
+}
+
+.btnPrimary {
+  background: var(--kl-acc);
+  color: var(--kl-acc-contrast);
+}
+
+.btnPrimary:hover {
+  color: var(--kl-acc-contrast);
+  filter: brightness(1.1);
+}
+
+.btnSecondary {
+  border-color: var(--kl-line);
+  color: var(--kl-ink);
+}
+
+.btnSecondary:hover {
+  border-color: var(--kl-mut);
+  color: var(--kl-ink);
+}
+
+/* ------------------------------ stats ------------------------------ */
+
+.stats {
+  border-bottom: 1px solid var(--kl-line);
+}
+
+.statsInner {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.stat {
+  border-left: 1px solid var(--kl-line);
+  padding: 22px 26px 24px;
+}
+
+.stat:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+a.stat {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Explicit hover color: Infima's bare `a:hover` ties a.stat's specificity,
+   and extracted-CSS order flips between dev and production builds. */
+a.stat:hover {
+  color: inherit;
+  text-decoration: none;
+}
+
+a.stat .statValue {
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-color: var(--kl-dots);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 7px;
+  width: fit-content;
+}
+
+a.stat:hover .statValue {
+  color: var(--kl-ink);
+  text-decoration-color: var(--kl-acc);
+}
+
+.statValue {
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.statLabel {
+  color: var(--kl-mut);
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  margin-top: 4px;
+}
+
+/* --------------------------- production --------------------------- */
+
+.production {
+  border-bottom: 1px solid var(--kl-line);
+  padding: 26px 0 28px;
+}
+
+.productionInner {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.productionCaption {
+  color: var(--kl-caption);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  position: relative;
+  text-transform: uppercase;
+}
+
+.productionCaption:not(:first-child) {
+  margin-top: 10px;
+}
+
+/* The (?) beside "in production at": hover peeks the gauge explainer,
+   click pins it open. The panel anchors to the caption row (not the icon)
+   so it never overflows narrow viewports. */
+.proofHelp {
+  color: var(--kl-faint);
+  display: inline-block;
+  margin-left: 7px;
+  vertical-align: -2px;
+}
+
+/* Padding grows the tap target to ~29px; the negative margin keeps the
+   13px glyph optically in place. */
+.proofHelpButton {
+  color: inherit;
+  cursor: help;
+  display: block;
+  margin: -8px;
+  padding: 8px;
+}
+
+.proofHelpButton svg {
+  display: block;
+  height: 13px;
+  width: 13px;
+}
+
+.proofHelp:hover,
+.proofHelpOpen {
+  color: var(--kl-mut);
+}
+
+.proofHelpPanel {
+  background: var(--kl-panel);
+  border: 1px solid var(--kl-line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px var(--kl-shadow);
+  color: var(--kl-text2);
+  font-family: var(--ifm-font-family-base);
+  font-size: 12.5px;
+  left: 0;
+  letter-spacing: normal;
+  line-height: 1.6;
+  opacity: 0;
+  padding: 10px 12px;
+  pointer-events: none;
+  position: absolute;
+  text-transform: none;
+  top: calc(100% + 8px);
+  transition: opacity 0.15s ease;
+  width: 320px;
+  max-width: 80vw;
+  z-index: 10;
+}
+
+.proofHelp:hover .proofHelpPanel,
+.proofHelpOpen .proofHelpPanel {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.productionNames {
+  align-items: stretch;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.productionNames a {
+  align-items: center;
+  border: 1px solid var(--kl-line);
+  border-radius: 8px;
+  color: var(--kl-strong);
+  display: inline-flex;
+  font-size: 14.5px;
+  font-weight: 650;
+  gap: 8px;
+  min-height: 39px;
+  padding: 8px 14px;
+  position: relative;
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* Brand marks render at chip scale, monochrome in the chip's ink. */
+.productionNames a svg {
+  height: 18px;
+  max-height: none;
+  width: auto;
+}
+
+.productionNames a:hover {
+  border-color: var(--kl-mut);
+  color: var(--kl-ink);
+  text-decoration: none;
+}
+
+/* Every cell links to proof; the corner arrow is the standing cue, faint
+   until intent. */
+.productionNames a:not(.productionCTA)::after {
+  color: var(--kl-faint);
+  content: '↗';
+  font-size: 10px;
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  transition: color 0.15s ease;
+}
+
+/* Must out-specify the base rule above, not tie with it: extracted-CSS
+   order flips between dev and production builds. */
+.productionNames a:not(.productionCTA):hover::after {
+  color: var(--kl-acc);
+}
+
+/* Proof strength gauge on "in production at" cells: fill per proofStrength()
+   in index.tsx. Faint until hover, like the corner arrow. */
+.proofBar {
+  background: var(--kl-line);
+  border-radius: 1px;
+  bottom: 3px;
+  height: 2px;
+  left: 14px;
+  overflow: hidden;
+  position: absolute;
+  right: 14px;
+}
+
+.proofBar > span {
+  background: var(--kl-mut);
+  display: block;
+  height: 100%;
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+}
+
+.productionNames a:hover .proofBar > span {
+  opacity: 1;
+}
+
+.productionNames a.productionCTA {
+  border: 1px dashed var(--kl-dash);
+  color: var(--kl-acc);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.productionNames a.productionCTA:hover {
+  border-color: var(--kl-acc);
+  color: var(--kl-acc);
+}
+
+/* --------------------------- error figure --------------------------- */
+
+.compiler {
+  border-top: none;
+}
+
+.compilerInner {
+  align-items: center;
+  display: grid;
+  gap: 48px;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  padding-bottom: 80px;
+  padding-top: 72px;
+}
+
+.compilerCopy h2 {
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+
+.compilerCopy p {
+  color: var(--kl-mut);
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0 0 12px;
+  max-width: 46ch;
+}
+
+.editor {
+  background: var(--kl-surface);
+  border: 1px solid var(--kl-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.editorBar {
+  align-items: center;
+  background: var(--kl-panel2);
+  border-bottom: 1px solid var(--kl-line);
+  color: var(--kl-mut);
+  display: flex;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 12px;
+  gap: 10px;
+  padding: 9px 14px;
+}
+
+.editorDots {
+  display: flex;
+  gap: 6px;
+}
+
+.editorDots i {
+  background: var(--kl-dot-glyph);
+  border-radius: 50%;
+  display: block;
+  height: 10px;
+  width: 10px;
+}
+
+.editorCode :global(pre.shiki) {
+  background: transparent !important;
+  border-radius: 0;
+  font-size: 13.5px;
+  line-height: 1.75;
+  margin: 0;
+  overflow-x: auto;
+  padding: 18px 20px;
+}
+
+/* Dual-theme shiki output: tokens carry --shiki-dark/--shiki-light vars. */
+.editorCode :global(pre.shiki) span {
+  color: var(--shiki-dark);
+}
+
+:global(html[data-theme='light']) .editorCode :global(pre.shiki) span {
+  color: var(--shiki-light);
+}
+
+.editorCode :global(.kl-squiggle) {
+  text-decoration: underline wavy var(--kl-err) 1.5px;
+  text-underline-offset: 4px;
+}
+
+.errPanel {
+  border-top: 1px solid var(--kl-line);
+  color: var(--kl-err-text);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 12px 20px 14px;
+}
+
+.errPanel span {
+  color: var(--kl-mut);
+}
+
+/* --------------------------- composition --------------------------- */
+
+.composition {
+  border-top: 1px solid var(--kl-line);
+}
+
+.compositionInner {
+  align-items: center;
+  display: grid;
+  gap: 48px;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  padding-bottom: 80px;
+  padding-top: 72px;
+}
+
+.compositionCopy h2 {
+  font-size: 26px;
+  letter-spacing: -0.02em;
+  margin: 0 0 12px;
+}
+
+.compositionCopy p {
+  color: var(--kl-mut);
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0 0 12px;
+  max-width: 46ch;
+}
+
+.typePanel {
+  border-top: 1px solid var(--kl-line);
+  color: var(--kl-type);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: 12px 20px 14px;
+}
+
+.typePanel span {
+  color: var(--kl-mut);
+}
+
+/* --------------------------- responsive --------------------------- */
+
+@media (max-width: 996px) {
+  .heroInner {
+    gap: 40px;
+    grid-template-columns: minmax(0, 1fr);
+    padding-top: 52px;
+  }
+
+  .statsInner {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .stat {
+    border-top: 1px solid var(--kl-line);
+  }
+
+  .stat:nth-child(odd) {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .stat:nth-child(-n + 2) {
+    border-top: 0;
+  }
+
+  .compilerInner {
+    gap: 32px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 997px) {
+  /* editor left, copy right, mirroring the compiler section */
+  .compositionInner > .compositionCopy {
+    order: 2;
+  }
+}
+
+@media (max-width: 996px) {
+  .compositionInner {
+    gap: 32px;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  /* Deliberate full-width stack instead of ragged wrapping. */
+  .heroButtons {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .heroButtons .btn {
+    text-align: center;
+  }
+
+  .heroAudit {
+    text-align: center;
+  }
+
+  .editorCode :global(pre.shiki) {
+    font-size: 11px;
+    padding: 14px 12px;
+  }
+
+  .statsInner {
+    grid-template-columns: 1fr;
+  }
+
+  .stat {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .stat:nth-child(2) {
+    border-top: 1px solid var(--kl-line);
+  }
+}
